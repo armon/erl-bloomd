@@ -1,0 +1,11 @@
+{application, bloomd,
+ [
+  {description, "bloomd is an Erlang driver to speak the Bloomd network protocol"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
