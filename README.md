@@ -6,6 +6,9 @@ bloomd servers. The library does not support any advanced features
 such as filter discovery and sharding. The library does support
 key hashing and automatically does pipelining of all requests.
 
+Specifically, this is to support the [bloomd](https://github.com/armon/bloomd)
+network server, which provides a network protocol for manipulating bloom filters.
+
 Features
 --------
 
