@@ -6,7 +6,8 @@
 -module(bloomd).
 -export([new/0, new/1, new/2, new/3, filter/2, create/3, create/2,
         create/1, list/1, filter_info/1, check/2, multi/2, set/2,
-        bulk/2, drop/1, close/1, clear/1, info/1, flush/1]).
+        bulk/2, drop/1, close/1, clear/1, info/1, flush/1,
+        close_conn/1]).
 
 -record(conn, {
         % Pid of the gen_server
@@ -41,8 +42,8 @@ new(Server, Port, HashKeys) ->
     #conn{pid=Pid, hash_keys=HashKeys}.
 
 % Closes a connection
--spec close(#conn{}) -> ok.
-close(Conn) ->
+-spec close_conn(#conn{}) -> ok.
+close_conn(Conn) ->
     gen_server:cast(Conn#conn.pid, stop).
 
 
