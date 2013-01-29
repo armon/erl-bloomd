@@ -4,7 +4,7 @@
 % that away using this interface.
 %%%
 -module(bloomd).
--export([new/0, new/2, new/3, filter/2, create/3, create/2,
+-export([new/0, new/1, new/2, new/3, filter/2, create/3, create/2,
         list/1, filter_info/1, check/2, multi/2, set/2,
         bulk/2, drop/1, close/1, clear/1, info/1, flush/1]).
 
@@ -25,7 +25,10 @@
 
 
 % Connects to localhost, default settings with hashing
-new() -> new("127.0.0.1", 8125, true).
+new() -> new("127.0.0.1", 8673, true).
+
+% Connects to host, default settings with hashing
+new(Server) -> new(Server, 8673, true).
 
 % Connects to a server and port, hashing enabled
 new(Server, Port) -> new(Server, Port, true).
@@ -63,7 +66,7 @@ list(Conn) ->
 % should be the line that is returned as the corresponding
 % value of the list command
 filter_info(Line) ->
-    [Prob, Bytes, Capacity, Size] = binary:split(Line, [<<" ">>]),
+    [Prob, Bytes, Capacity, Size] = binary:split(Line, [<<" ">>], [global]),
     Info = [{probability, list_to_float(binary_to_list(Prob))},
             {bytes, list_to_integer(binary_to_list(Bytes))},
             {capacity, list_to_integer(binary_to_list(Capacity))},

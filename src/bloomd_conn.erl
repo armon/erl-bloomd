@@ -22,7 +22,7 @@
         buf=[]
         }).
 
-start_link() -> start_link("127.0.0.1", 8125).
+start_link() -> start_link("127.0.0.1", 8673).
 start_link(Server, Port) ->
     gen_server:start_link(?MODULE, [Server, Port], []).
 
@@ -144,9 +144,7 @@ enqueue_command(State, Client, Cmd) ->
 % with no commands or data queued.
 fail_all_queued(State) ->
     % Fail each of the commands in the queue
-    lists:foldl(fun({Client, _CMD}) ->
-        gen_server:reply(Client, {error, command_failed})
-    end, queue:to_list(State#state.cmd_queue)),
+    [gen_server:reply(Client, {error, command_failed}) || {Client, _} <- queue:to_list(State#state.cmd_queue)],
 
     % Reset the state
     State#state{sock=undefined, cmd_queue=queue:new(), buf=[]}.
@@ -202,10 +200,11 @@ process_response_block(State=#state{buf=Buf}) ->
         % Split into the inner and outer blocks
         [Inner, Remain] ->
             % Get the inner lines of the block
-            InnerLines = binary:split(Inner, [<<"\n">>]),
+            InnerLinesRaw = binary:split(Inner, [<<"\n">>], [global]),
+            InnerLines = [L || L <- InnerLinesRaw, L =/= <<>>],
 
             % Convert to a property list
-            ResultList = lists:foldl(fun(Line) ->
+            ResultList = lists:map(fun(Line) ->
                 [Key, Val] = binary:split(Line, [<<" ">>]),
                 {Key, Val}
             end, InnerLines),
