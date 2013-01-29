@@ -35,6 +35,9 @@ init([Server, Port]) ->
     % Attempt to connect to the server
     {ok, Sock} = connect(Server, Port),
 
+    % Trap any exits
+    process_flag(trap_exit, true),
+
     % Create a command queue
     Queue = queue:new(),
 
@@ -177,7 +180,7 @@ process_buffer(State=#state{buf=Buf}) ->
 
 
 % Processes a line of boolean Yes / No results
-process_bool_line(State, Accum, <<"">>) ->
+process_bool_line(State, Accum, <<>>) ->
     Results = lists:reverse(Accum),
     respond_to_first(State, {ok, Results});
 
@@ -245,11 +248,11 @@ process_response(State, <<"Client Error: ", Err/binary>>) ->
 
 % Formats a command to be sent to bloomd
 format_cmd({check, Filter, Key}) -> [<<"c ">>, Filter, <<" ">>, Key, <<"\n">>];
-format_cmd({multi, Filter, Keys}) when Keys =:= [] ->
+format_cmd({multi, Filter, Keys}) when Keys =/= [] ->
     KeyList = [[<<" ">>, K] || K <- Keys],
     [<<"m ">>, Filter, KeyList, <<"\n">>];
 format_cmd({set, Filter, Key}) -> [<<"s ">>, Filter, <<" ">>, Key, <<"\n">>];
-format_cmd({bulk, Filter, Keys}) when Keys =:= [] ->
+format_cmd({bulk, Filter, Keys}) when Keys =/= [] ->
     KeyList = [[<<" ">>, K] || K <- Keys],
     [<<"b ">>, Filter, KeyList, <<"\n">>];
 format_cmd({list}) -> [<<"list\n">>];
