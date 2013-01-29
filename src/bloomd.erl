@@ -76,28 +76,41 @@ filter_info(Line) ->
 % Filter specific commands
 %%%
 
+% Hashes the keys using SHA1 if key hashing is enabled,
+% otherwise does not modify them
+adjust_key(Conn, Key) ->
+    case Conn#conn.hash_keys of
+        false -> Key;
+        true -> crypto:sha(Key)
+    end.
+adjust_keys(Conn, Keys) ->
+    case Conn#conn.hash_keys of
+        false -> Keys;
+        true -> [crypto:sha(K) || K <- Keys]
+    end.
+
 % Checks for a given key
 -spec check(#filter{}, iolist()) -> {ok, [boolean()]} | {error, no_filter} | {error, command_failed}.
 check(Filt, Key) ->
-    AdjKey = Key,
+    AdjKey = adjust_key(Filt#filter.conn, Key),
     gen_server:call(Filt#filter.conn#conn.pid, {check, Filt#filter.name, AdjKey}).
 
 % Checks for multiple keys
 -spec multi(#filter{}, [iolist()]) -> {ok, [boolean()]} | {error, no_filter} | {error, command_failed}.
 multi(Filt, Keys) ->
-    AdjKeys = Keys,
+    AdjKeys = adjust_keys(Filt#filter.conn, Keys),
     gen_server:call(Filt#filter.conn#conn.pid, {multi, Filt#filter.name, AdjKeys}).
 
 % Sets a given key
 -spec set(#filter{}, iolist()) -> {ok, [boolean()]} | {error, no_filter} | {error, command_failed}.
 set(Filt, Key) ->
-    AdjKey = Key,
+    AdjKey = adjust_key(Filt#filter.conn, Key),
     gen_server:call(Filt#filter.conn#conn.pid, {set, Filt#filter.name, AdjKey}).
 
 % Sets a set of keys
 -spec bulk(#filter{}, [iolist()]) -> {ok, [boolean()]} | {error, no_filter} | {error, command_failed}.
 bulk(Filt, Keys) ->
-    AdjKeys = Keys,
+    AdjKeys = adjust_keys(Filt#filter.conn, Keys),
     gen_server:call(Filt#filter.conn#conn.pid, {bulk, Filt#filter.name, AdjKeys}).
 
 % Deletes a filter from memory and disk
