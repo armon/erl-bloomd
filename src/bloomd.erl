@@ -5,8 +5,9 @@
 %%%
 -module(bloomd).
 -export([new/0, new/1, new/2, new/3, filter/2, create/3, create/2,
-        list/1, filter_info/1, check/2, multi/2, set/2,
-        bulk/2, drop/1, close/1, clear/1, info/1, flush/1]).
+        create/1, list/1, filter_info/1, check/2, multi/2, set/2,
+        bulk/2, drop/1, close/1, clear/1, info/1, flush/1,
+        close/1]).
 
 -record(conn, {
         % Pid of the gen_server
@@ -37,7 +38,14 @@ new(Server, Port) -> new(Server, Port, true).
 -spec new(string(), integer(), boolean()) -> #conn{}.
 new(Server, Port, HashKeys) ->
     {ok, Pid} = bloomd_conn:start_link(Server, Port),
+    unlink(Pid),
     #conn{pid=Pid, hash_keys=HashKeys}.
+
+% Closes a connection
+-spec close(#conn{}) -> ok.
+close(Conn) ->
+    gen_server:cast(Conn#conn.pid, stop).
+
 
 % Returns a filter record for the given connection
 filter(Conn, Filter) ->
@@ -56,6 +64,12 @@ create(Conn, Filter, Options) ->
 
 % Create with default options
 create(Conn, Filter) -> create(Conn, Filter, []).
+
+% Create with a filter object
+create(Filter) ->
+    Conn = Filter#filter.conn,
+    Name = Filter#filter.name,
+    create(Conn, Name, []).
 
 % Lists the existing filters. Returns a proplist of the
 % filter name to a 'FilterInfo' line.
@@ -84,12 +98,12 @@ filter_info(Line) ->
 adjust_key(Conn, Key) ->
     case Conn#conn.hash_keys of
         false -> Key;
-        true -> crypto:sha(Key)
+        true -> bin_to_hex(crypto:sha(Key))
     end.
 adjust_keys(Conn, Keys) ->
     case Conn#conn.hash_keys of
         false -> Keys;
-        true -> [crypto:sha(K) || K <- Keys]
+        true -> [bin_to_hex(crypto:sha(K)) || K <- Keys]
     end.
 
 % Checks for a given key
@@ -150,4 +164,22 @@ flush(Handle) ->
             gen_server:call(Handle#filter.conn#conn.pid, {flush, Handle#filter.name})
     end.
 
+
+%%%
+% Converts binary to hex
+%%%
+
+bin_to_hex(Bin) -> bin_to_hex(Bin, []).
+
+bin_to_hex(<<>>, Accum) -> lists:reverse(Accum);
+bin_to_hex(<<Char1:4, Char2:4, Rest/binary>>, Accum) ->
+    Letter1 = case Char1 of
+        Num1 when Num1 < 10 -> $0 + Num1;
+        _ -> $a + (Char1 - 10)
+    end,
+    Letter2 = case Char2 of
+        Num2 when Num2 < 10 -> $0 + Num2;
+        _ -> $a + (Char2 - 10)
+    end,
+    bin_to_hex(Rest, [Letter2, Letter1 | Accum]).
 
