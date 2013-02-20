@@ -19,7 +19,11 @@
         cmd_queue,
 
         % Buffer of incoming data
-        buf=[]
+        buf=[],
+
+        % Indicates if we are blocked waiting on
+        % more data
+        blocked=false
         }).
 
 start_link() -> start_link("127.0.0.1", 8673).
@@ -175,7 +179,12 @@ process_buffer(State=#state{buf=Buf}) ->
         % Process each available command
         [Line, Remain] ->
             S1 = process_response(State#state{buf=Remain}, Line),
-            process_buffer(S1)
+
+            % Keep processing if we are not blocked
+            case S1#state.blocked of
+                false -> process_buffer(S1);
+                true -> State#state{blocked=false}
+            end
     end.
 
 
@@ -198,7 +207,7 @@ process_response_block(State=#state{buf=Buf}) ->
         [_] ->
             % Re-add the start block to the buffer
             NewBuf = iolist_to_binary([<<"START\n">>, Buf]),
-            State#state{buf=NewBuf};
+            State#state{buf=NewBuf, blocked=true};
 
         % Split into the inner and outer blocks
         [Inner, Remain] ->
