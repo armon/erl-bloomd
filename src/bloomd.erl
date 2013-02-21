@@ -5,7 +5,7 @@
 %%%
 -module(bloomd).
 -export([new/0, new/1, new/2, new/3, filter/2, create/3, create/2,
-        create/1, list/1, filter_info/1, check/2, multi/2, set/2,
+        create/1, list/1, filter_info/1, info_proplist/1, check/2, multi/2, set/2,
         bulk/2, drop/1, close/1, clear/1, info/1, flush/1,
         close_conn/1]).
 
@@ -87,6 +87,18 @@ filter_info(Line) ->
             {size, list_to_integer(binary_to_list(Size))}
             ],
     Info.
+
+% Parses the proplist that is returned from
+% bloomd:info() into a more usable proplist form.
+info_proplist(InfoBlock) ->
+    lists:map(fun({K, V}) ->
+        Key = binary_to_atom(K, utf8),
+        Val = case Key of
+            probability -> list_to_float(binary_to_list(V));
+            _ -> list_to_integer(binary_to_list(V))
+        end,
+        {Key, Val}
+    end, InfoBlock).
 
 
 %%%
