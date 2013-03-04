@@ -1,7 +1,35 @@
 $script = <<EOF
 set -e
 
-sudo apt-get install build-essential git-core scons -y
+# Install the things we need to build
+apt-get update
+apt-get install -y autoconf
+apt-get install -y automake
+apt-get install -y build-essential
+apt-get install -y git-core
+apt-get install -y libtool
+apt-get install -y telnet
+apt-get install -y scons
+
+# Compile Erlang from source
+if [ ! -f /usr/local/bin/erl ]; then
+  pushd /tmp
+
+  # Download Erlang
+  wget --progress=dot -e dotbytes=1M http://www.erlang.org/download/otp_src_R15B03-1.tar.gz
+
+  # Untar it
+  tar xvzf otp_src_R15B03-1.tar.gz
+
+  # Compile it
+  pushd otp_src_R15B03
+  ./configure
+  make
+  make install
+  popd
+
+  popd
+fi
 
 if [ -d bloomd ]; then
   cd bloomd && git pull && cd ..
