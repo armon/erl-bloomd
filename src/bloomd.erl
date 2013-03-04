@@ -195,3 +195,12 @@ bin_to_hex(<<Char1:4, Char2:4, Rest/binary>>, Accum) ->
     end,
     bin_to_hex(Rest, [Letter2, Letter1 | Accum]).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+bin_to_hex_test() ->
+    B = <<"\x00\x16\xFF">>,
+    ?assertEqual("0016ff", bin_to_hex(B)).
+
+-endif.
+
