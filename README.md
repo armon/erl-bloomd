@@ -1,4 +1,4 @@
-erl-bloomd
+erl-bloomd [![Build Status](https://travis-ci.org/armon/erl-bloomd.png)](https://travis-ci.org/armon/erl-bloomd)
 ==========
 
 erl-bloomd provides an Erlang client library to interface with

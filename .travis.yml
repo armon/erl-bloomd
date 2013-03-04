@@ -1,0 +1,13 @@
+language: erlang
+otp_release:
+    - R15B02
+before_install:
+  - sudo apt-get -y install scons
+  - pushd /home/travis
+  - git clone --depth 1 https://github.com/armon/bloomd
+  - cd bloomd
+  - scons
+  - echo -e "[bloomd]\ndata_dir=/tmp/bloomd\nflush_interval=60000\nport=8673\nworkers=1\nlog_level=debug" > bloomd.conf
+  - /home/travis/bloomd/bloomd -f /home/travis/bloomd/bloomd.conf &
+  - cd ..
+  - popd
