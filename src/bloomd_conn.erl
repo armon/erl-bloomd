@@ -104,7 +104,11 @@ handle_info({tcp_error, _Sock, _Reason}, State) ->
 
 terminate(_Reason, State) ->
     % Close our socket before terminating
-    gen_tcp:close(State#state.sock), ok.
+    case State#state.sock of
+        undefined -> ok;
+        S -> gen_tcp:close(S)
+    end,
+    ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
