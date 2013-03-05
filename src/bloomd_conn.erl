@@ -294,3 +294,61 @@ format_cmd({flush, undefined}) -> [<<"flush\n">>];
 format_cmd({flush, Filter}) -> [<<"flush ">>, Filter, <<"\n">>];
 format_cmd(_) -> error.
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+format_cmd_bad_test() ->
+    ?assertEqual(error, format_cmd(tubez)).
+
+format_cmd_flush_test() ->
+    ?assertEqual(<<"flush test\n">>, iolist_to_binary(format_cmd({flush, "test"}))).
+
+format_cmd_flush_all_test() ->
+    ?assertEqual(<<"flush\n">>, iolist_to_binary(format_cmd({flush, undefined}))).
+
+format_cmd_info_test() ->
+    ?assertEqual(<<"info test\n">>, iolist_to_binary(format_cmd({info, "test"}))).
+
+format_cmd_clear_test() ->
+    ?assertEqual(<<"clear test\n">>, iolist_to_binary(format_cmd({clear, "test"}))).
+
+format_cmd_close_test() ->
+    ?assertEqual(<<"close test\n">>, iolist_to_binary(format_cmd({close, "test"}))).
+
+format_cmd_drop_test() ->
+    ?assertEqual(<<"drop test\n">>, iolist_to_binary(format_cmd({drop, "test"}))).
+
+format_cmd_create_blank_test() ->
+    ?assertEqual(<<"create test\n">>, iolist_to_binary(format_cmd({create, "test", []}))).
+
+format_cmd_create_capacity_test() ->
+    ?assertEqual(<<"create test capacity=1000\n">>, iolist_to_binary(format_cmd({create, "test", [{capacity, 1000}]}))).
+
+
+format_cmd_create_prob_test() ->
+    ?assertEqual(<<"create test prob=0.001000000000\n">>, iolist_to_binary(format_cmd({create, "test", [{probability, 0.001}]}))).
+
+format_cmd_create_inmem_test() ->
+    ?assertEqual(<<"create test in_memory=1\n">>, iolist_to_binary(format_cmd({create, "test", [{in_memory, 1}]}))).
+
+format_cmd_list_test() ->
+    ?assertEqual(<<"list\n">>, iolist_to_binary(format_cmd({list}))).
+
+format_cmd_bulk_test() ->
+    ?assertEqual(<<"b foo a b c\n">>,
+                 iolist_to_binary(format_cmd({bulk, "foo", ["a", "b", "c"]}))).
+
+format_cmd_multi_test() ->
+    ?assertEqual(<<"m foo a b c\n">>,
+                 iolist_to_binary(format_cmd({multi, "foo", ["a", "b", "c"]}))).
+
+format_cmd_set_test() ->
+    ?assertEqual(<<"s foo a\n">>,
+                 iolist_to_binary(format_cmd({set, "foo", "a"}))).
+
+format_cmd_check_test() ->
+    ?assertEqual(<<"c foo a\n">>,
+                 iolist_to_binary(format_cmd({check, "foo", "a"}))).
+
+-endif.
+
