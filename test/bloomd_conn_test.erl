@@ -30,7 +30,7 @@ clean_stop(_) ->
     ?_test(
         begin
             {_, _, Conn} = new_conn(),
-            {conn, Pid, _} = Conn,
+            {conn, Pid, _, _} = Conn,
             process_flag(trap_exit, true),
             link(Pid),
             gen_server:cast(Pid, stop),

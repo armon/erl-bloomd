@@ -4,14 +4,20 @@
 % that away using this interface.
 %%%
 -module(bloomd).
--export([new/0, new/1, new/2, new/3, filter/2, create/3, create/2,
+-export([new/0, new/1, new/2, new/3, new/4, filter/2, create/3, create/2,
         create/1, list/1, filter_info/1, info_proplist/1, check/2, multi/2, set/2,
         bulk/2, drop/1, close/1, clear/1, info/1, flush/1,
-        close_conn/1]).
+        close_conn/1, set_timeout/2]).
+
+% Default timeout for bloomd in milliseconds
+-define(TIMEOUT, 300000).
 
 -record(conn, {
         % Pid of the gen_server
         pid,
+
+        % Timeout for calls
+        timeout=?TIMEOUT,
 
         % Enables hashing of keys, which is
         % required if they will contain spaces or newlines
@@ -36,16 +42,24 @@ new(Server, Port) -> new(Server, Port, true).
 
 % Connects to a server and port with given hash settings
 -spec new(string(), integer(), boolean()) -> #conn{}.
-new(Server, Port, HashKeys) ->
+new(Server, Port, HashKeys) -> new(Server, Port, HashKeys, ?TIMEOUT).
+
+% Connects to a server and port with given hash settings
+-spec new(string(), integer(), boolean(), integer() | infinity) -> #conn{}.
+new(Server, Port, HashKeys, Timeout) ->
     {ok, Pid} = bloomd_conn:start_link(Server, Port),
     unlink(Pid),
-    #conn{pid=Pid, hash_keys=HashKeys}.
+    #conn{pid=Pid, hash_keys=HashKeys, timeout=Timeout}.
 
 % Closes a connection
 -spec close_conn(#conn{}) -> ok.
 close_conn(Conn) ->
     gen_server:cast(Conn#conn.pid, stop).
 
+% Sets the timeout on the connection
+-spec set_timeout(#conn{}, integer() | infinity) -> #conn{}.
+set_timeout(Conn, Timeout) ->
+    Conn#conn{timeout=Timeout}.
 
 % Returns a filter record for the given connection
 filter(Conn, Filter) ->
@@ -60,7 +74,7 @@ filter(Conn, Filter) ->
 -type create_option() :: {capacity, integer()} | {in_memory, integer()} | {probability, float()}.
 -spec create(#conn{}, string(), [create_option()]) -> done | exists | {error, command_failed}.
 create(Conn, Filter, Options) ->
-    gen_server:call(Conn#conn.pid, {create, Filter, Options}).
+    gen_server:call(Conn#conn.pid, {create, Filter, Options}, Conn#conn.timeout).
 
 % Create with default options
 create(Conn, Filter) -> create(Conn, Filter, []).
@@ -74,7 +88,7 @@ create(Filter) ->
 % Lists the existing filters. Returns a proplist of the
 % filter name to a 'FilterInfo' line.
 list(Conn) ->
-    gen_server:call(Conn#conn.pid, {list}).
+    gen_server:call(Conn#conn.pid, {list}, Conn#conn.timeout).
 
 % Parses a filter info line into a proplist. This
 % should be the line that is returned as the corresponding
@@ -122,44 +136,52 @@ adjust_keys(Conn, Keys) ->
 -spec check(#filter{}, iolist()) -> {ok, [boolean()]} | {error, no_filter} | {error, command_failed}.
 check(Filt, Key) ->
     AdjKey = adjust_key(Filt#filter.conn, Key),
-    gen_server:call(Filt#filter.conn#conn.pid, {check, Filt#filter.name, AdjKey}).
+    gen_server:call(Filt#filter.conn#conn.pid, {check, Filt#filter.name, AdjKey},
+                    Filt#filter.conn#conn.timeout).
 
 % Checks for multiple keys
 -spec multi(#filter{}, [iolist()]) -> {ok, [boolean()]} | {error, no_filter} | {error, command_failed}.
 multi(Filt, Keys) ->
     AdjKeys = adjust_keys(Filt#filter.conn, Keys),
-    gen_server:call(Filt#filter.conn#conn.pid, {multi, Filt#filter.name, AdjKeys}).
+    gen_server:call(Filt#filter.conn#conn.pid, {multi, Filt#filter.name, AdjKeys},
+                   Filt#filter.conn#conn.timeout).
 
 % Sets a given key
 -spec set(#filter{}, iolist()) -> {ok, [boolean()]} | {error, no_filter} | {error, command_failed}.
 set(Filt, Key) ->
     AdjKey = adjust_key(Filt#filter.conn, Key),
-    gen_server:call(Filt#filter.conn#conn.pid, {set, Filt#filter.name, AdjKey}).
+    gen_server:call(Filt#filter.conn#conn.pid, {set, Filt#filter.name, AdjKey},
+                   Filt#filter.conn#conn.timeout).
 
 % Sets a set of keys
 -spec bulk(#filter{}, [iolist()]) -> {ok, [boolean()]} | {error, no_filter} | {error, command_failed}.
 bulk(Filt, Keys) ->
     AdjKeys = adjust_keys(Filt#filter.conn, Keys),
-    gen_server:call(Filt#filter.conn#conn.pid, {bulk, Filt#filter.name, AdjKeys}).
+    gen_server:call(Filt#filter.conn#conn.pid, {bulk, Filt#filter.name, AdjKeys},
+                   Filt#filter.conn#conn.timeout).
 
 % Deletes a filter from memory and disk
 -spec drop(#filter{}) -> {error, no_filter} | {error, command_failed} | done.
 drop(Filt) ->
-    gen_server:call(Filt#filter.conn#conn.pid, {drop, Filt#filter.name}).
+    gen_server:call(Filt#filter.conn#conn.pid, {drop, Filt#filter.name},
+                   Filt#filter.conn#conn.timeout).
 
 % Removes a filter from memory, leaves it in bloomd
 -spec close(#filter{}) -> {error, no_filter} | {error, command_failed} | done.
 close(Filt) ->
-    gen_server:call(Filt#filter.conn#conn.pid, {close, Filt#filter.name}).
+    gen_server:call(Filt#filter.conn#conn.pid, {close, Filt#filter.name},
+                   Filt#filter.conn#conn.timeout).
 
 % For non paged in filters, removes them from bloomd, but leaves on disk
 -spec clear(#filter{}) -> {error, no_filter} | {error, not_proxied} | {error, command_failed} | done.
 clear(Filt) ->
-    gen_server:call(Filt#filter.conn#conn.pid, {clear, Filt#filter.name}).
+    gen_server:call(Filt#filter.conn#conn.pid, {clear, Filt#filter.name},
+                   Filt#filter.conn#conn.timeout).
 
 -spec info(#filter{}) -> {error, no_filter} | {error, command_failed} | list().
 info(Filt) ->
-    gen_server:call(Filt#filter.conn#conn.pid, {info, Filt#filter.name}).
+    gen_server:call(Filt#filter.conn#conn.pid, {info, Filt#filter.name},
+                   Filt#filter.conn#conn.timeout).
 
 
 %%%
@@ -171,9 +193,10 @@ info(Filt) ->
 flush(Handle) ->
     case Handle of
         #conn{} ->
-            gen_server:call(Handle#conn.pid, {flush, undefined});
+            gen_server:call(Handle#conn.pid, {flush, undefined}, Handle#conn.timeout);
         #filter{} ->
-            gen_server:call(Handle#filter.conn#conn.pid, {flush, Handle#filter.name})
+            gen_server:call(Handle#filter.conn#conn.pid, {flush, Handle#filter.name},
+                           Handle#filter.conn#conn.timeout)
     end.
 
 
