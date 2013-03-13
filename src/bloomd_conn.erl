@@ -15,7 +15,7 @@
         port,
 
         % Queue of commands, FIFO
-        % Each item is composed of {Client, Cmd}
+        % Each item is just a client to respond to
         cmd_queue,
 
         % Buffer of incoming data
@@ -60,7 +60,7 @@ handle_call(Msg, From, State) ->
                     case gen_tcp:send(Sock, Cmd) of
                         % Enqueue the response for later
                         ok ->
-                            NS2 = enqueue_command(NS1, From, Msg),
+                            NS2 = enqueue_command(NS1, From),
                             {noreply, NS2};
 
                         % Fail all pending commands, and this one
@@ -142,12 +142,12 @@ get_socket(State) ->
 
 
 % Enqueues a new client command
-enqueue_command(State, Client, Cmd) ->
+enqueue_command(State, Client) ->
     % Get the first client in the queue
     Q = State#state.cmd_queue,
 
     % Add to the end of the queue
-    NQ = queue:in({Client, Cmd}, Q),
+    NQ = queue:in(Client, Q),
     State#state{cmd_queue=NQ}.
 
 
@@ -155,7 +155,7 @@ enqueue_command(State, Client, Cmd) ->
 % with no commands or data queued.
 fail_all_queued(State) ->
     % Fail each of the commands in the queue
-    [gen_server:reply(Client, {error, command_failed}) || {Client, _} <- queue:to_list(State#state.cmd_queue)],
+    [gen_server:reply(Client, {error, command_failed}) || Client <- queue:to_list(State#state.cmd_queue)],
 
     % Reset the state
     State#state{sock=undefined, cmd_queue=queue:new(), buf=[]}.
@@ -165,7 +165,7 @@ fail_all_queued(State) ->
 respond_to_first(State, Response) ->
     % Get the first client in the queue
     Q = State#state.cmd_queue,
-    {Client, _Cmd} = queue:head(Q),
+    Client = queue:head(Q),
 
     % Reply to the client
     gen_server:reply(Client, Response),
