@@ -124,12 +124,12 @@ info_proplist(InfoBlock) ->
 adjust_key(Conn, Key) ->
     case Conn#conn.hash_keys of
         false -> Key;
-        true -> bin_to_hex(crypto:sha(Key))
+        true -> bin_to_hex(crypto:hash(sha, Key))
     end.
 adjust_keys(Conn, Keys) ->
     case Conn#conn.hash_keys of
         false -> Keys;
-        true -> [bin_to_hex(crypto:sha(K)) || K <- Keys]
+        true -> [bin_to_hex(crypto:hash(sha, K)) || K <- Keys]
     end.
 
 % Checks for a given key
